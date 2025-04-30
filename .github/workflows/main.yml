@@ -25,38 +25,38 @@ jobs:
     needs: test # This job runs only if the 'test' job succeeds
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' # This job runs only on pushes to main
     runs-on: ubuntu-latest
-
     steps:
     - uses: actions/checkout@v3
-
+      with:
+        fetch-depth: 0 # Fetch all history for tags
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.10'
-
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        if exist requirements.txt (pip install -r requirements.txt)
-
-    - name: Create release tag
-      id: create_tag # Assign an ID to this step to reference its outputs
+        pip install pytest
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+    - name: Configure Git
       run: |
-        # Generate a version tag based on the current date and time
-        # This part uses bash/shell syntax which is standard in GitHub Actions runners (even on Windows runners, bash is often available)
+        git config --global user.name "GitHub Actions"
+        git config --global user.email "actions@github.com"
+    - name: Create release tag
+      id: create_tag
+      run: |
         VERSION=v$(date +'%Y.%m.%d.%H%M')
         echo "Creating release tag: $VERSION"
-        git tag $VERSION # Create the local tag
-        git push origin $VERSION # Push the tag to GitHub
-        echo "tag=$VERSION" >> $GITHUB_OUTPUT # Set the tag name as an output for subsequent steps
-
+        git tag $VERSION
+        git push origin $VERSION
+        echo "tag=$VERSION" >> $GITHUB_OUTPUT
     - name: Create GitHub Release
-      uses: softprops/action-gh-release@v1 # Use a pre-built action to create a release
+      uses: softprops/action-gh-release@v1
       with:
-        tag_name: ${{ steps.create_tag.outputs.tag }} # Use the tag name from the previous step's output
-        name: Release ${{ steps.create_tag.outputs.tag }} # Name of the release
-        draft: false # Not a draft release
-        prerelease: false # Not a prerelease
-        files: | # Files to include in the release assets
+        tag_name: ${{ steps.create_tag.outputs.tag }}
+        name: Release ${{ steps.create_tag.outputs.tag }}
+        draft: false
+        prerelease: false
+        files: |
           src/greeting.py
           README.md
